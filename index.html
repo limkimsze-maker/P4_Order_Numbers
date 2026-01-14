@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<link rel="icon" href="./kimsze_sharp16.ico?v=20260111a" sizes="any">
+<link rel="shortcut icon" href="./kimsze_sharp16.ico?v=20260111a">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>P1 Compare 3 Numbers (1–99999) — Discs ➜ Place Value Numbers</title>
+
+  <style>
+    :root{
+      --bg:#ffffff;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --line:#e2e8f0;
+
+      /* PV header tints */
+      --cardTTh:#efe7ff; /* ten-thousands */
+      --cardTh:#e7f4e7;  /* thousands */
+      --cardH:#ffe4ee;   /* hundreds */
+      --cardT:#ffedd5;   /* tens */
+      --cardO:#e0f2fe;   /* ones */
+
+      --input:#e8f6df;
+      --inputLine:#9bbf87;
+
+      --radius:22px;
+      --shadow:0 14px 40px rgba(2,6,23,.10);
+
+      --drawerW:min(420px, 92vw);
+
+      /* stage base size (auto-scaled; no scrolling) */
+      --baseW: 1240;
+      --baseH: 740;
+
+      /* ✅ discs (kept baseline) */
+      --discBig: 45px;   /* ten-thousands/thousands/hundreds */
+      --discMed: 42px;   /* tens */
+      --discSmall: 37px; /* ones */
+
+      /* ✅ tighter gaps so 5+4 discs never clip */
+      --gap: 8px;        /* between the 2 stack columns */
+      --rowGap: 8px;     /* vertical gap between discs */
+    }
+
+    *{box-sizing:border-box}
+    html, body{
+      height:100%;
+      margin:0;
+      overflow:hidden;
+      overscroll-behavior:none;
+      background:var(--bg);
+      color:var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", sans-serif;
+    }
+
+    body.drawer-open .viewport{ padding-right: calc(var(--drawerW) + 10px); }
+
+    .viewport{
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      padding: 10px;
+    }
+    .stage{
+      width: calc(var(--baseW) * 1px);
+      height: calc(var(--baseH) * 1px);
+      transform-origin: top left;
+      background:#fff;
+      border-radius: 18px;
+      position:relative;
+    }
+
+    .wrap{
+      width:100%; height:100%;
+      padding: 14px 14px 10px;
+      display:flex; flex-direction:column;
+      gap: 8px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    .titleLine{
+      display:flex;
+      align-items:flex-end;
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+    .titleText{
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1.02;
+      margin:0;
+      letter-spacing:.2px;
+    }
+    .hdrBlank{
+      width: 120px; /* slightly wider for 5-digit */
+      height: 48px;
+      border-radius: 16px;
+      border: 3px solid var(--inputLine);
+      background: var(--input);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 28px;
+      font-weight: 900;
+      color: rgba(15,23,42,.95);
+      user-select:none;
+    }
+
+    .settingsBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      border-radius:999px;
+      padding:10px 14px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow: 0 8px 18px rgba(2,6,23,.06);
+      white-space:nowrap;
+      height: 44px;
+      align-self:flex-start;
+    }
+    .settingsBtn:active{ transform: translateY(1px); }
+
+    .floatGear{
+      position:absolute;
+      right: 14px;
+      bottom: 14px;
+      z-index: 5;
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      border:1px solid var(--line);
+      background:#fff;
+      box-shadow: 0 14px 30px rgba(2,6,23,.14);
+      cursor:pointer;
+      font-size: 22px;
+      font-weight: 900;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .floatGear:active{ transform: translateY(1px); }
+
+    /* ====== Place Value comparison table (numbers only) ====== */
+    .pvCompareWrap{
+      display:none;
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 10px;
+      background:#fff;
+    }
+    body.pvcompare .pvCompareWrap{ display:block; }
+    body.pvcompare .grid{ display:none; } /* hide discs when comparing by numbers */
+
+    .pvCompareTable{
+      width:100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow:hidden;
+      border-radius: 18px;
+      border: 4px solid #b6d38a;
+      background:#fff;
+      table-layout: fixed;
+    }
+    .pvCompareTable th,
+    .pvCompareTable td{
+      border: 2px solid rgba(15,23,42,.08);
+      text-align:center;
+      font-weight: 900;
+    }
+    .pvCompareTable th{
+      padding: 10px 6px;
+      font-size: 20px;
+      color:#fff;
+      letter-spacing:.2px;
+    }
+    .pvCompareTable th.colNum{ background:#7fbf5a; }
+    .pvCompareTable th.colTTh{ background:#845ef7; } /* ten-thousands */
+    .pvCompareTable th.colTh{ background:#2f9e44; }
+    .pvCompareTable th.colH{ background:#ff5aa6; }
+    .pvCompareTable th.colT{ background:#ffb020; }
+    .pvCompareTable th.colO{ background:#18b8ff; }
+
+    .pvCompareTable td{
+      padding: 10px 6px;
+      font-size: 26px;
+      background:#fff;
+    }
+    .pvCompareTable td.numCell{
+      font-size: 30px;
+      background: #f5ffe9;
+    }
+
+    /* ====== 3-column layout (same structure; each side is one column) ====== */
+    .grid{
+      flex: 1;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      align-items:stretch;
+      min-height: 0;
+    }
+
+    /* ✅ side becomes a 2-row grid (discs centered + PV card) */
+    .side{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      background:#fff;
+      padding: 10px;
+      min-height:0;
+
+      display:grid;
+      grid-template-rows: 1fr auto;
+      gap: 8px;
+    }
+
+    /* ✅ discs chart now 5 columns */
+    .blocks{
+      min-height: 0;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr; /* ✅ ten-thousands added */
+      gap: 10px;
+
+      padding: 6px;
+
+      align-content: center;
+      justify-content: center;
+      justify-items: stretch;
+    }
+
+    .pvCol{
+      border-radius: 14px;
+      overflow:hidden;
+      border:1px solid rgba(2,6,23,.08);
+      display:flex;
+      flex-direction:column;
+      min-height: 0;
+      background:#fff;
+    }
+    .pvCol.tth{ background: var(--cardTTh); }
+    .pvCol.th{ background: var(--cardTh); }
+    .pvCol.h { background: var(--cardH); }
+    .pvCol.t { background: var(--cardT); }
+    .pvCol.o { background: var(--cardO); }
+
+    /* two vertical stacks (5 left, 4 right), bottom-up */
+    .colInner{
+      flex: 1;
+      min-height: 0;
+      padding: 8px 6px;
+
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+      align-items:end;
+      justify-items:center;
+      overflow:hidden;
+    }
+    .stackCol{
+      width:100%;
+      display:flex;
+      flex-direction: column-reverse;
+      gap: var(--rowGap);
+      align-items:center;
+      justify-content:flex-start;
+      min-height: 0;
+    }
+
+    /* Per-column default disc size (JS may auto-fit smaller) */
+    .pvCol.tth .colInner{ --discS: var(--discBig); }
+    .pvCol.th  .colInner{ --discS: var(--discBig); }
+    .pvCol.h   .colInner{ --discS: var(--discBig); }
+    .pvCol.t   .colInner{ --discS: var(--discMed); }
+    .pvCol.o   .colInner{ --discS: var(--discSmall); }
+
+    .disc{
+      width: var(--discS);
+      height: var(--discS);
+      border-radius: 999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight: 1000;
+      color: rgba(15,23,42,.95);
+      background: #fff;
+      border: 3px solid rgba(2,6,23,.12);
+      box-shadow: 0 10px 18px rgba(2,6,23,.10);
+      user-select:none;
+      flex: 0 0 auto;
+    }
+    .disc.tth{ background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.10)), #b197fc; border-color: rgba(64,0,140,.22); }
+    .disc.th { background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.10)), #37b24d; border-color: rgba(7,94,36,.35); }
+    .disc.h  { background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.10)), #ff7ab6; border-color: rgba(136,22,74,.28); }
+    .disc.t  { background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.10)), #f6a21a; border-color: rgba(122,73,0,.30); }
+    .disc.o  { background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.10)), #4d8dff; border-color: rgba(0,49,120,.28); }
+    .disc span{
+      filter: drop-shadow(0 2px 0 rgba(255,255,255,.35));
+      font-size: clamp(12px, calc(var(--discS) * 0.34), 18px);
+      line-height: 1;
+    }
+
+    /* PV Card: now 5 columns */
+    .pvCard{
+      border-radius: 24px;
+      overflow:hidden;
+      border:2px solid #cbd5e1;
+      background:#fff;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr; /* ✅ added */
+      margin-top: 0;
+    }
+
+    .pvCell{
+      padding: 6px 6px;
+      display:flex;
+      flex-direction:column;
+      gap: 5px;
+      align-items:center;
+      justify-content:center;
+      min-height: 74px;
+      border-right: 1px solid rgba(15,23,42,.08);
+    }
+    .pvCell:last-child{ border-right:0; }
+
+    .pvCell.tenthousands{ background: linear-gradient(180deg, #d9c7ff 0%, var(--cardTTh) 100%); }
+    .pvCell.thousands{    background: linear-gradient(180deg, #bff0c8 0%, var(--cardTh) 100%); }
+    .pvCell.hundreds{     background: linear-gradient(180deg, #ffd3e3 0%, var(--cardH) 100%); }
+    .pvCell.tens{         background: linear-gradient(180deg, #ffd08a 0%, var(--cardT) 100%); }
+    .pvCell.ones{         background: linear-gradient(180deg, #9bdcff 0%, var(--cardO) 100%); }
+
+    .pvLabel{
+      font-weight: 900;
+      font-size: 12px;
+      line-height: 1;
+      letter-spacing: .1px;
+      text-shadow: 0 2px 0 rgba(255,255,255,.35);
+      text-align:center;
+    }
+
+    .pvValue{
+      width: 52px;
+      height: 38px;
+      border-radius: 14px;
+      border: 3px solid rgba(2,6,23,.12);
+      background: rgba(255,255,255,.75);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 24px;
+      font-weight: 900;
+    }
+    .pvValue.editable{
+      border-color: var(--inputLine);
+      background: var(--input);
+    }
+    .pvInput{
+      width:100%;
+      height:100%;
+      border:0;
+      outline:none;
+      background:transparent;
+      text-align:center;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .answers{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 8px 10px 6px;
+      background:#fff;
+      box-shadow: var(--shadow);
+    }
+
+    .row{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap: 10px;
+      font-size: 21px;
+      font-weight: 900;
+      margin: 5px 0;
+    }
+    .row .label{ font-size: 21px; font-weight: 900; margin-right: 2px; }
+
+    .blank{
+      width: 160px; /* a bit wider for 5-digit */
+      height: 50px;
+      border-radius: 16px;
+      border: 3px solid var(--inputLine);
+      background: var(--input);
+      font-size: 28px;
+      font-weight: 900;
+      text-align:center;
+      outline:none;
+    }
+    .blank.good{ border-color:#16a34a; box-shadow: 0 0 0 4px rgba(34,197,94,.15); }
+    .blank.bad{ border-color:#ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,.14); }
+
+    .pvValue.good{ border-color:#16a34a !important; box-shadow: 0 0 0 4px rgba(34,197,94,.15); }
+    .pvValue.bad{ border-color:#ef4444 !important; box-shadow: 0 0 0 4px rgba(239,68,68,.14); }
+
+    .btnRow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top: 6px;
+    }
+    .btn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius: 14px;
+      padding: 9px 12px;
+      font-weight: 900;
+      cursor:pointer;
+      box-shadow: 0 10px 20px rgba(2,6,23,.08);
+      user-select:none;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      border-color: transparent;
+      background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+      color:#fff;
+    }
+    .btn.toggle-on{
+      border-color:#16a34a;
+      box-shadow: 0 10px 20px rgba(2,6,23,.08), 0 0 0 4px rgba(34,197,94,.12);
+    }
+    .msg{ font-weight: 800; color: var(--muted); font-size: 14px; }
+
+    .credit{
+      text-align:right;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Drag & drop ordering */
+    .orderWrap{
+      width:100%;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      margin-top: 0;
+    }
+    .orderTop{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+    .orderHint{
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+    .orderHint .lock{
+      font-weight: 900;
+      color: rgba(15,23,42,.75);
+      margin-left: 8px;
+    }
+
+    .tiles{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+      min-height: 52px;
+    }
+    .tile{
+      width: 126px; /* a bit wider */
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+      border: 2px solid #cbd5e1;
+      box-shadow: 0 10px 18px rgba(2,6,23,.10);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 26px;
+      font-weight: 900;
+      cursor: grab;
+      user-select:none;
+      touch-action:none;
+    }
+    .tile:active{ cursor: grabbing; transform: translateY(1px); }
+    .tile.dragging{ opacity:.5; }
+
+    .tile.masked{
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border-color:#dbe3ee;
+      color: rgba(15,23,42,.55);
+      cursor: not-allowed;
+      box-shadow: 0 10px 18px rgba(2,6,23,.06);
+    }
+
+    .slots{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .slot{
+      width: 138px; /* a bit wider */
+      height: 50px;
+      border-radius: 16px;
+      border: 3px dashed rgba(155,191,135,.9);
+      background: rgba(232,246,223,.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 26px;
+      font-weight: 900;
+      color: rgba(15,23,42,.88);
+      user-select:none;
+    }
+    .slot.filled{
+      border-style: solid;
+      background: var(--input);
+    }
+    .slot.over{ box-shadow: 0 0 0 4px rgba(34,197,94,.14); }
+    .slot.good{ border-color:#16a34a; box-shadow: 0 0 0 4px rgba(34,197,94,.15); }
+    .slot.bad{ border-color:#ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,.14); }
+
+    /* Teacher drawer */
+    .drawerOverlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,0);
+      display:none;
+      z-index: 50;
+    }
+    .drawer{
+      position:fixed; top:0; right:0; height:100%;
+      width: var(--drawerW);
+      background:#fff;
+      border-left:1px solid var(--line);
+      box-shadow: -20px 0 60px rgba(2,6,23,.25);
+      transform: translateX(100%);
+      transition: transform .22s ease;
+      z-index: 60;
+      display:flex;
+      flex-direction:column;
+    }
+    .drawerOverlay.show{ display:block; }
+    .drawer.show{ transform: translateX(0); }
+
+    .drawerTop{
+      position:sticky; top:0;
+      background:#fff;
+      border-bottom:1px solid var(--line);
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      z-index:2;
+    }
+    .drawerTop h2{ margin:0; font-size: 16px; letter-spacing:.2px; }
+    .closeBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-weight: 900;
+      cursor:pointer;
+    }
+    .drawerBody{ padding: 14px; overflow:auto; }
+
+    .field{
+      border:1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background:#fafafa;
+    }
+    .field label{ display:block; font-weight: 900; margin-bottom: 6px; }
+    .help{ color: var(--muted); font-size: 12px; line-height: 1.35; margin-top: 6px; }
+    .numRow{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .setNum{
+      width: 150px;
+      height: 46px;
+      border-radius: 12px;
+      border:1px solid #cbd5e1;
+      padding: 0 10px;
+      font-size: 16px;
+      font-weight: 800;
+      outline:none;
+      background:#fff;
+    }
+
+    .toggleRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 10px 0 2px;
+    }
+    .toggleRow span{ font-weight: 900; }
+
+    .switch{
+      appearance:none;
+      width: 54px;
+      height: 30px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      border:1px solid #cbd5e1;
+      position:relative;
+      cursor:pointer;
+      outline:none;
+    }
+    .switch::after{
+      content:"";
+      width: 24px; height: 24px;
+      border-radius:999px;
+      background:#fff;
+      box-shadow: 0 8px 18px rgba(2,6,23,.18);
+      position:absolute;
+      left: 3px; top: 2px;
+      transition: transform .18s ease;
+    }
+    .switch:checked{ background: #22c55e; border-color:#16a34a; }
+    .switch:checked::after{ transform: translateX(24px); }
+
+    .sliderRow{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items:center;
+      margin-top: 8px;
+    }
+    input[type="range"]{ width:100%; }
+    .pill{
+      font-weight:900;
+      font-size:12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      white-space:nowrap;
+    }
+  </style>
+</script>
+</head>
+
+<body>
+  <div class="viewport">
+    <div class="stage" id="stage">
+      <div class="wrap">
+        <div class="topbar">
+          <div class="titleLine">
+            <div class="titleText">Compare</div>
+            <div class="hdrBlank" id="hdr0">???</div>
+            <div class="titleText">,</div>
+            <div class="hdrBlank" id="hdr1">???</div>
+            <div class="titleText">and</div>
+            <div class="hdrBlank" id="hdr2">???</div>
+            <div class="titleText">.</div>
+          </div>
+          <button class="settingsBtn" id="openSettings">⚙️ Teacher Settings</button>
+        </div>
+
+        <!-- compare by place value numbers (table) -->
+        <div class="pvCompareWrap" id="pvCompareWrap" aria-label="Place value comparison table">
+          <table class="pvCompareTable" aria-label="Place value table">
+            <thead>
+              <tr>
+                <th class="colNum"> </th>
+                <th class="colTTh">Ten-thousands</th>
+                <th class="colTh">Thousands</th>
+                <th class="colH">Hundreds</th>
+                <th class="colT">Tens</th>
+                <th class="colO">Ones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="numCell" id="pvRowNum0">—</td>
+                <td id="pvRowTTh0">—</td>
+                <td id="pvRowTh0">—</td>
+                <td id="pvRowH0">—</td>
+                <td id="pvRowT0">—</td>
+                <td id="pvRowO0">—</td>
+              </tr>
+              <tr>
+                <td class="numCell" id="pvRowNum1">—</td>
+                <td id="pvRowTTh1">—</td>
+                <td id="pvRowTh1">—</td>
+                <td id="pvRowH1">—</td>
+                <td id="pvRowT1">—</td>
+                <td id="pvRowO1">—</td>
+              </tr>
+              <tr>
+                <td class="numCell" id="pvRowNum2">—</td>
+                <td id="pvRowTTh2">—</td>
+                <td id="pvRowTh2">—</td>
+                <td id="pvRowH2">—</td>
+                <td id="pvRowT2">—</td>
+                <td id="pvRowO2">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid">
+          <div class="side">
+            <div class="blocks">
+              <div class="pvCol tth"><div class="colInner" id="tth0"></div></div>
+              <div class="pvCol th"><div class="colInner" id="th0"></div></div>
+              <div class="pvCol h"><div class="colInner" id="hund0"></div></div>
+              <div class="pvCol t"><div class="colInner" id="tens0"></div></div>
+              <div class="pvCol o"><div class="colInner" id="ones0"></div></div>
+            </div>
+            <div class="pvCard">
+              <div class="pvCell tenthousands">
+                <div class="pvLabel">Ten-<br>thousands</div>
+                <div class="pvValue" id="pvTTh0"></div>
+              </div>
+              <div class="pvCell thousands">
+                <div class="pvLabel">Thousands</div>
+                <div class="pvValue" id="pvTh0"></div>
+              </div>
+              <div class="pvCell hundreds">
+                <div class="pvLabel">Hundreds</div>
+                <div class="pvValue" id="pvH0"></div>
+              </div>
+              <div class="pvCell tens">
+                <div class="pvLabel">Tens</div>
+                <div class="pvValue" id="pvT0"></div>
+              </div>
+              <div class="pvCell ones">
+                <div class="pvLabel">Ones</div>
+                <div class="pvValue" id="pvO0"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="side">
+            <div class="blocks">
+              <div class="pvCol tth"><div class="colInner" id="tth1"></div></div>
+              <div class="pvCol th"><div class="colInner" id="th1"></div></div>
+              <div class="pvCol h"><div class="colInner" id="hund1"></div></div>
+              <div class="pvCol t"><div class="colInner" id="tens1"></div></div>
+              <div class="pvCol o"><div class="colInner" id="ones1"></div></div>
+            </div>
+            <div class="pvCard">
+              <div class="pvCell tenthousands">
+                <div class="pvLabel">Ten-<br>thousands</div>
+                <div class="pvValue" id="pvTTh1"></div>
+              </div>
+              <div class="pvCell thousands">
+                <div class="pvLabel">Thousands</div>
+                <div class="pvValue" id="pvTh1"></div>
+              </div>
+              <div class="pvCell hundreds">
+                <div class="pvLabel">Hundreds</div>
+                <div class="pvValue" id="pvH1"></div>
+              </div>
+              <div class="pvCell tens">
+                <div class="pvLabel">Tens</div>
+                <div class="pvValue" id="pvT1"></div>
+              </div>
+              <div class="pvCell ones">
+                <div class="pvLabel">Ones</div>
+                <div class="pvValue" id="pvO1"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="side">
+            <div class="blocks">
+              <div class="pvCol tth"><div class="colInner" id="tth2"></div></div>
+              <div class="pvCol th"><div class="colInner" id="th2"></div></div>
+              <div class="pvCol h"><div class="colInner" id="hund2"></div></div>
+              <div class="pvCol t"><div class="colInner" id="tens2"></div></div>
+              <div class="pvCol o"><div class="colInner" id="ones2"></div></div>
+            </div>
+            <div class="pvCard">
+              <div class="pvCell tenthousands">
+                <div class="pvLabel">Ten-<br>thousands</div>
+                <div class="pvValue" id="pvTTh2"></div>
+              </div>
+              <div class="pvCell thousands">
+                <div class="pvLabel">Thousands</div>
+                <div class="pvValue" id="pvTh2"></div>
+              </div>
+              <div class="pvCell hundreds">
+                <div class="pvLabel">Hundreds</div>
+                <div class="pvValue" id="pvH2"></div>
+              </div>
+              <div class="pvCell tens">
+                <div class="pvLabel">Tens</div>
+                <div class="pvValue" id="pvT2"></div>
+              </div>
+              <div class="pvCell ones">
+                <div class="pvLabel">Ones</div>
+                <div class="pvValue" id="pvO2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="answers">
+          <div class="row">
+            <span class="label">(a)</span>
+            <input class="blank" id="greatest" inputmode="numeric" maxlength="5">
+            <span>is the greatest number.</span>
+          </div>
+
+          <div class="row">
+            <span class="label">(b)</span>
+            <input class="blank" id="smallest" inputmode="numeric" maxlength="5">
+            <span>is the smallest number.</span>
+          </div>
+
+          <div class="row" style="margin-top:8px">
+            <span class="label">(c)</span>
+            <span>Arrange these numbers in order.</span>
+          </div>
+
+          <div class="orderWrap">
+            <div class="orderTop">
+              <div class="orderHint" id="orderHint">
+                Begin with the smallest.
+                <span class="lock" id="lockHint">Check (a) and (b) to reveal the numbers.</span>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap">
+                <button class="btn" id="orderClearBtn" title="Clear the order slots">Clear order</button>
+              </div>
+            </div>
+
+            <div class="tiles" id="tiles"></div>
+
+            <div class="slots" id="slots">
+              <div class="slot" data-slot="0" aria-label="Order slot 1">?</div>
+              <div class="slot" data-slot="1" aria-label="Order slot 2">?</div>
+              <div class="slot" data-slot="2" aria-label="Order slot 3">?</div>
+            </div>
+          </div>
+
+          <div class="btnRow">
+            <button class="btn primary" id="checkABBtn">Check (a)(b)</button>
+            <button class="btn primary" id="checkOrderBtn">Check order (c)</button>
+
+            <button class="btn" id="pvModeBtn" title="Hide discs and compare using place value digits only">Compare by Place Value</button>
+
+            <button class="btn" id="quickRandomBtn" title="New random numbers">Random</button>
+            <button class="btn" id="quickHeaderBtn" title="Toggle header reveal">Reveal header</button>
+            <button class="btn" id="quickPVBtn" title="Toggle place value reveal">Reveal PV</button>
+
+            <button class="btn" id="clearBtn">Clear</button>
+            <span class="msg" id="msg"></span>
+          </div>
+
+          <div class="credit">Designed by Lim Kim Sze © 2026</div>
+        </div>
+
+        <button class="floatGear" id="openSettings2" aria-label="Open teacher settings">⚙️</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawerOverlay" id="overlay" tabindex="-1" aria-hidden="true"></div>
+  <aside class="drawer" id="drawer" aria-label="Teacher Settings Panel">
+    <div class="drawerTop">
+      <h2>Teacher Settings</h2>
+      <button class="closeBtn" id="closeSettings">Close ✕</button>
+    </div>
+    <div class="drawerBody">
+      <div class="field">
+        <label>Set the three numbers (1–99999)</label>
+        <div class="numRow">
+          <input class="setNum" id="set0" type="number" min="1" max="99999" step="1" value="32500">
+          <input class="setNum" id="set1" type="number" min="1" max="99999" step="1" value="25000">
+          <input class="setNum" id="set2" type="number" min="1" max="99999" step="1" value="19100">
+          <button class="btn" id="applyBtn">Apply</button>
+          <button class="btn" id="randomBtn">Random</button>
+        </div>
+        <div class="help">If any numbers repeat, they will be nudged so all 3 are different.</div>
+      </div>
+
+      <div class="field">
+        <div class="toggleRow">
+          <span>Reveal numbers in header</span>
+          <input class="switch" id="revealHeader" type="checkbox">
+        </div>
+        <div class="toggleRow">
+          <span>Reveal Ten-thousands/Thousands/Hundreds/Tens/Ones values in cards</span>
+          <input class="switch" id="revealPV" type="checkbox">
+        </div>
+        <div class="help">If OFF, pupils type each digit into the PV boxes.</div>
+      </div>
+
+      <div class="field">
+        <div class="toggleRow">
+          <span>Order direction (smallest → greatest)</span>
+          <input class="switch" id="orderSmallToBig" type="checkbox" checked>
+        </div>
+        <div class="help">If OFF, pupils order greatest → smallest.</div>
+      </div>
+
+      <div class="field">
+        <label>Disc sizes (auto-fit keeps discs inside PV chart)</label>
+
+        <div class="sliderRow">
+          <input id="discBigRange" type="range" min="34" max="66" step="1" value="45">
+          <span class="pill">Big: <span id="discBigVal">45</span>px</span>
+        </div>
+
+        <div class="sliderRow" style="margin-top:10px">
+          <input id="discMedRange" type="range" min="30" max="62" step="1" value="42">
+          <span class="pill">Medium: <span id="discMedVal">42</span>px</span>
+        </div>
+
+        <div class="sliderRow" style="margin-top:10px">
+          <input id="discSmallRange" type="range" min="24" max="58" step="1" value="37">
+          <span class="pill">Small: <span id="discSmallVal">37</span>px</span>
+        </div>
+
+        <div class="help">Each place is stacked vertically: 5 discs on the left + 4 on the right.</div>
+      </div>
+
+      <div class="field">
+        <label>Quick reset (teacher)</label>
+        <button class="btn" id="teacherClear">Clear pupil inputs</button>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    const BASE_W = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--baseW')) || 980;
+    const BASE_H = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--baseH')) || 740;
+    const stage = document.getElementById('stage');
+
+    const overlay = document.getElementById('overlay');
+    const drawer = document.getElementById('drawer');
+
+    function fitStage(){
+      const pad = 20;
+      const vw = Math.max(320, window.innerWidth - pad);
+      const vh = Math.max(320, window.innerHeight - pad);
+
+      const drawerOpen = document.body.classList.contains('drawer-open');
+      const dw = drawerOpen ? drawer.getBoundingClientRect().width : 0;
+      const availW = Math.max(320, vw - dw);
+
+      const s = Math.min(availW / BASE_W, vh / BASE_H);
+      stage.style.transform = `scale(${s})`;
+    }
+
+    window.addEventListener('resize', ()=>{
+      fitStage();
+      applyDiscSizes(true);
+    });
+    window.addEventListener('orientationchange', ()=>{
+      fitStage();
+      applyDiscSizes(true);
+    });
+
+    const hdrEls = [document.getElementById('hdr0'), document.getElementById('hdr1'), document.getElementById('hdr2')];
+
+    // disc areas per number i
+    const tthEls  = [document.getElementById('tth0'),  document.getElementById('tth1'),  document.getElementById('tth2')];
+    const thEls   = [document.getElementById('th0'),   document.getElementById('th1'),   document.getElementById('th2')];
+    const hundEls = [document.getElementById('hund0'), document.getElementById('hund1'), document.getElementById('hund2')];
+    const tensEls = [document.getElementById('tens0'), document.getElementById('tens1'), document.getElementById('tens2')];
+    const onesEls = [document.getElementById('ones0'), document.getElementById('ones1'), document.getElementById('ones2')];
+
+    // PV card boxes
+    const pvTTh = [document.getElementById('pvTTh0'), document.getElementById('pvTTh1'), document.getElementById('pvTTh2')];
+    const pvTh  = [document.getElementById('pvTh0'),  document.getElementById('pvTh1'),  document.getElementById('pvTh2')];
+    const pvH   = [document.getElementById('pvH0'),   document.getElementById('pvH1'),   document.getElementById('pvH2')];
+    const pvT   = [document.getElementById('pvT0'),   document.getElementById('pvT1'),   document.getElementById('pvT2')];
+    const pvO   = [document.getElementById('pvO0'),   document.getElementById('pvO1'),   document.getElementById('pvO2')];
+
+    const greatestInp = document.getElementById('greatest');
+    const smallestInp = document.getElementById('smallest');
+    const msg = document.getElementById('msg');
+
+    const tilesEl = document.getElementById('tiles');
+    const slotsEl = document.getElementById('slots');
+    const slotEls = Array.from(slotsEl.querySelectorAll('.slot'));
+    const orderHint = document.getElementById('orderHint');
+    const lockHint = document.getElementById('lockHint');
+
+    const set0 = document.getElementById('set0');
+    const set1 = document.getElementById('set1');
+    const set2 = document.getElementById('set2');
+    const applyBtn = document.getElementById('applyBtn');
+    const randomBtn = document.getElementById('randomBtn');
+
+    const revealHeader = document.getElementById('revealHeader');
+    const revealPV = document.getElementById('revealPV');
+    const orderSmallToBig = document.getElementById('orderSmallToBig');
+    const teacherClear = document.getElementById('teacherClear');
+
+    // disc size sliders
+    const discBigRange = document.getElementById('discBigRange');
+    const discMedRange = document.getElementById('discMedRange');
+    const discSmallRange = document.getElementById('discSmallRange');
+    const discBigVal = document.getElementById('discBigVal');
+    const discMedVal = document.getElementById('discMedVal');
+    const discSmallVal = document.getElementById('discSmallVal');
+
+    const openSettings = document.getElementById('openSettings');
+    const openSettings2 = document.getElementById('openSettings2');
+    const closeSettings = document.getElementById('closeSettings');
+
+    const checkABBtn = document.getElementById('checkABBtn');
+    const checkOrderBtn = document.getElementById('checkOrderBtn');
+
+    const clearBtn = document.getElementById('clearBtn');
+    const orderClearBtn = document.getElementById('orderClearBtn');
+
+    const quickRandomBtn = document.getElementById('quickRandomBtn');
+    const quickHeaderBtn = document.getElementById('quickHeaderBtn');
+    const quickPVBtn = document.getElementById('quickPVBtn');
+
+    const pvModeBtn = document.getElementById('pvModeBtn');
+    let pvCompareMode = false;
+
+    // PV table cells
+    const pvRowNum = [document.getElementById('pvRowNum0'), document.getElementById('pvRowNum1'), document.getElementById('pvRowNum2')];
+    const pvRowTTh = [document.getElementById('pvRowTTh0'), document.getElementById('pvRowTTh1'), document.getElementById('pvRowTTh2')];
+    const pvRowTh  = [document.getElementById('pvRowTh0'),  document.getElementById('pvRowTh1'),  document.getElementById('pvRowTh2')];
+    const pvRowH   = [document.getElementById('pvRowH0'),   document.getElementById('pvRowH1'),   document.getElementById('pvRowH2')];
+    const pvRowT   = [document.getElementById('pvRowT0'),   document.getElementById('pvRowT1'),   document.getElementById('pvRowT2')];
+    const pvRowO   = [document.getElementById('pvRowO0'),   document.getElementById('pvRowO1'),   document.getElementById('pvRowO2')];
+
+    let nums = [32500, 25000, 19100];
+    let revealHeaderNumbers = false;
+    let revealPVNumbers = false;
+    let orderIsSmallToBig = true;
+
+    // PV inputs when editable: pvInputs[i] = {tth,th,h,t,o}
+    let pvInputs = [
+      {tth:null,th:null,h:null,t:null,o:null},
+      {tth:null,th:null,h:null,t:null,o:null},
+      {tth:null,th:null,h:null,t:null,o:null}
+    ];
+
+    let tilesRevealed = false;
+
+    function clamp1to99999(n){
+      n = Number(n);
+      if (!Number.isFinite(n)) return 1;
+      n = Math.round(n);
+      if (n < 1) n = 1;
+      if (n > 99999) n = 99999;
+      return n;
+    }
+
+    function splitTThTHHO(n){
+      return {
+        tth: Math.floor(n/10000),
+        th:  Math.floor((n%10000)/1000),
+        h:   Math.floor((n%1000)/100),
+        t:   Math.floor((n%100)/10),
+        o:   n % 10
+      };
+    }
+
+    function sanitizeDigits(val, maxLen){
+      const s = String(val ?? '').trim();
+      if (!s) return '';
+      return s.replace(/[^\d]/g,'').slice(0, maxLen);
+    }
+
+    function makeAllDifferent(arr){
+      const out = arr.map(clamp1to99999);
+      const seen = new Set();
+      for (let i=0; i<out.length; i++){
+        let v = out[i];
+        let guard = 0;
+        while (seen.has(v) && guard < 200000){
+          v = (v === 99999) ? 1 : v + 1;
+          guard++;
+        }
+        out[i] = v;
+        seen.add(v);
+      }
+      return out;
+    }
+
+    function makeDisc(kind, label){
+      const d = document.createElement('div');
+      d.className = `disc ${kind}`;
+      const sp = document.createElement('span');
+      sp.textContent = label;
+      d.appendChild(sp);
+      return d;
+    }
+
+    function getCssPx(varName, fallback){
+      const v = getComputedStyle(document.documentElement).getPropertyValue(varName);
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function fitDiscSizeForTwoCol(container, countL, countR, maxS){
+      if ((countL <= 0 && countR <= 0) || !container) return maxS;
+
+      const styles = getComputedStyle(container);
+      const padX = (parseFloat(styles.paddingLeft)||0) + (parseFloat(styles.paddingRight)||0);
+      const padY = (parseFloat(styles.paddingTop)||0) + (parseFloat(styles.paddingBottom)||0);
+
+      const gapCol = getCssPx('--gap', 10);
+      const gapRow = getCssPx('--rowGap', 10);
+
+      const availW = Math.max(20, container.clientWidth - padX - gapCol);
+      const maxByW = availW / 2;
+
+      const availH = Math.max(40, container.clientHeight - padY);
+      const byH = (c)=>{
+        if (c <= 0) return Infinity;
+        return (availH - (c - 1) * gapRow) / c;
+      };
+      const maxByH = Math.min(byH(countL), byH(countR));
+
+      const fit = Math.floor(Math.min(maxS, maxByW, maxByH));
+      return Math.max(18, fit);
+    }
+
+    function renderDiscs(container, count, kind, labelText){
+      container.innerHTML = '';
+
+      const colL = document.createElement('div');
+      colL.className = 'stackCol';
+      const colR = document.createElement('div');
+      colR.className = 'stackCol';
+      container.appendChild(colL);
+      container.appendChild(colR);
+
+      const leftCount = Math.min(5, count);
+      const rightCount = Math.max(0, count - 5);
+
+      const currentDiscS = getComputedStyle(container).getPropertyValue('--discS');
+      const maxS = Math.max(18, parseFloat(currentDiscS) || 40);
+
+      const fitS = fitDiscSizeForTwoCol(container, leftCount, rightCount, maxS);
+      container.style.setProperty('--discS', fitS + 'px');
+
+      for (let i=0; i<leftCount; i++) colL.appendChild(makeDisc(kind, labelText));
+      for (let i=0; i<rightCount; i++) colR.appendChild(makeDisc(kind, labelText));
+    }
+
+    function renderBlocksFor(i){
+      const sp = splitTThTHHO(nums[i]);
+      renderDiscs(tthEls[i],  sp.tth, 'tth', '10000');
+      renderDiscs(thEls[i],   sp.th,  'th',  '1000');
+      renderDiscs(hundEls[i], sp.h,   'h',   '100');
+      renderDiscs(tensEls[i], sp.t,   't',   '10');
+      renderDiscs(onesEls[i], sp.o,   'o',   '1');
+    }
+
+    function applyDiscSizes(skipRender=false){
+      const big = Math.max(34, Math.min(66, Number(discBigRange.value)));
+      const med = Math.max(30, Math.min(62, Number(discMedRange.value)));
+      const small = Math.max(24, Math.min(58, Number(discSmallRange.value)));
+
+      document.documentElement.style.setProperty('--discBig', big + 'px');
+      document.documentElement.style.setProperty('--discMed', med + 'px');
+      document.documentElement.style.setProperty('--discSmall', small + 'px');
+
+      discBigVal.textContent = big;
+      discMedVal.textContent = med;
+      discSmallVal.textContent = small;
+
+      for (let i=0;i<3;i++) renderBlocksFor(i);
+    }
+
+    function renderHeader(){
+      for (let i=0; i<3; i++){
+        hdrEls[i].textContent = revealHeaderNumbers ? String(nums[i]) : '???';
+      }
+    }
+
+    function renderPVCompareTable(){
+      for (let i=0; i<3; i++){
+        const sp = splitTThTHHO(nums[i]);
+        pvRowNum[i].textContent = String(nums[i]);
+        pvRowTTh[i].textContent = sp.tth;
+        pvRowTh[i].textContent  = sp.th;
+        pvRowH[i].textContent   = sp.h;
+        pvRowT[i].textContent   = sp.t;
+        pvRowO[i].textContent   = sp.o;
+      }
+    }
+
+    function setPVBox(el, mode, valueOrPlaceholder, maxLen){
+      el.classList.remove('editable');
+      el.innerHTML = '';
+
+      if (mode === 'reveal'){
+        el.textContent = valueOrPlaceholder;
+        return null;
+      }
+
+      el.classList.add('editable');
+      const inp = document.createElement('input');
+      inp.className = 'pvInput';
+      inp.inputMode = 'numeric';
+      inp.maxLength = maxLen;
+      inp.placeholder = valueOrPlaceholder;
+
+      inp.addEventListener('input', ()=>{
+        const cleaned = sanitizeDigits(inp.value, maxLen);
+        if (inp.value !== cleaned) inp.value = cleaned;
+      });
+
+      el.appendChild(inp);
+      return inp;
+    }
+
+    function renderPV(){
+      [...pvTTh, ...pvTh, ...pvH, ...pvT, ...pvO].forEach(el => el.classList.remove('good','bad'));
+      pvInputs = [
+        {tth:null,th:null,h:null,t:null,o:null},
+        {tth:null,th:null,h:null,t:null,o:null},
+        {tth:null,th:null,h:null,t:null,o:null}
+      ];
+
+      for (let i=0; i<3; i++){
+        const sp = splitTThTHHO(nums[i]);
+        if (revealPVNumbers){
+          setPVBox(pvTTh[i], 'reveal', sp.tth, 1);
+          setPVBox(pvTh[i],  'reveal', sp.th,  1);
+          setPVBox(pvH[i],   'reveal', sp.h,   1);
+          setPVBox(pvT[i],   'reveal', sp.t,   1);
+          setPVBox(pvO[i],   'reveal', sp.o,   1);
+        } else {
+          pvInputs[i].tth = setPVBox(pvTTh[i], 'edit', '', 1);
+          pvInputs[i].th  = setPVBox(pvTh[i],  'edit', '', 1);
+          pvInputs[i].h   = setPVBox(pvH[i],   'edit', '', 1);
+          pvInputs[i].t   = setPVBox(pvT[i],   'edit', '', 1);
+          pvInputs[i].o   = setPVBox(pvO[i],   'edit', '', 1);
+        }
+      }
+    }
+
+    // ----- ordering -----
+    function clearOrderMarks(){
+      slotEls.forEach(s=> s.classList.remove('good','bad','over'));
+    }
+
+    function setSlotDisplay(slot){
+      const filled = !!slot.dataset.value;
+      if (!filled){
+        slot.textContent = '?';
+        slot.classList.remove('filled');
+        return;
+      }
+      slot.classList.add('filled');
+      slot.textContent = slot.dataset.value;
+    }
+
+    function clearOrderSlots(){
+      clearOrderMarks();
+      slotEls.forEach(s=>{
+        s.dataset.value = '';
+        setSlotDisplay(s);
+      });
+      Array.from(tilesEl.querySelectorAll('.tile')).forEach(t=> t.classList.remove('dragging'));
+    }
+
+    function currentExpectedOrder(){
+      const sorted = nums.slice().sort((a,b)=>a-b);
+      return orderIsSmallToBig ? sorted : sorted.slice().reverse();
+    }
+
+    function updateOrderHint(){
+      orderHint.childNodes[0].textContent = orderIsSmallToBig ? 'Begin with the smallest. ' : 'Begin with the greatest. ';
+    }
+
+    function applyTileMaskState(tileEl){
+      if (tilesRevealed){
+        tileEl.classList.remove('masked');
+        tileEl.textContent = tileEl.dataset.value;
+        tileEl.draggable = true;
+      } else {
+        tileEl.classList.add('masked');
+        tileEl.textContent = '???';
+        tileEl.draggable = false;
+      }
+      lockHint.style.display = tilesRevealed ? 'none' : 'inline';
+    }
+
+    function refreshTileMasking(){
+      Array.from(tilesEl.querySelectorAll('.tile')).forEach(applyTileMaskState);
+    }
+
+    function buildTiles(){
+      tilesEl.innerHTML = '';
+      const shuffled = nums.slice().sort(()=> Math.random()-0.5);
+
+      for (const n of shuffled){
+        const d = document.createElement('div');
+        d.className = 'tile';
+        d.dataset.value = String(n);
+
+        applyTileMaskState(d);
+
+        d.addEventListener('dragstart', (e)=>{
+          if (!tilesRevealed){
+            e.preventDefault();
+            return;
+          }
+          d.classList.add('dragging');
+          e.dataTransfer.setData('text/plain', d.dataset.value);
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        d.addEventListener('dragend', ()=> d.classList.remove('dragging'));
+
+        tilesEl.appendChild(d);
+      }
+
+      clearOrderSlots();
+    }
+
+    function initSlotsDnD(){
+      slotEls.forEach(slot=>{
+        slot.addEventListener('dragover', (e)=>{
+          if (!tilesRevealed) return;
+          e.preventDefault();
+          slot.classList.add('over');
+          e.dataTransfer.dropEffect = 'move';
+        });
+        slot.addEventListener('dragleave', ()=> slot.classList.remove('over'));
+        slot.addEventListener('drop', (e)=>{
+          if (!tilesRevealed) return;
+          e.preventDefault();
+          slot.classList.remove('over');
+
+          const val = sanitizeDigits(e.dataTransfer.getData('text/plain'), 5);
+          if (!val) return;
+
+          slotEls.forEach(s=>{
+            if (s !== slot && s.dataset.value === val){
+              s.dataset.value = '';
+              setSlotDisplay(s);
+            }
+          });
+
+          slot.dataset.value = val;
+          setSlotDisplay(slot);
+        });
+      });
+    }
+
+    function readOrderSlots(){
+      return slotEls.map(s => s.dataset.value ? Number(s.dataset.value) : null);
+    }
+
+    // ----- marking / checks -----
+    function markInput(el, ok){
+      el.classList.remove('good','bad');
+      el.classList.add(ok ? 'good' : 'bad');
+    }
+    function markPVBox(el, ok){
+      el.classList.remove('good','bad');
+      el.classList.add(ok ? 'good' : 'bad');
+    }
+
+    function clearMarks(){
+      [greatestInp, smallestInp].forEach(el=> el.classList.remove('good','bad'));
+      [...pvTTh, ...pvTh, ...pvH, ...pvT, ...pvO].forEach(el=> el.classList.remove('good','bad'));
+      clearOrderMarks();
+      msg.textContent = '';
+    }
+
+    function clearInputsOnly(){
+      [greatestInp, smallestInp].forEach(el=> el.value = '');
+      if (!revealPVNumbers){
+        pvInputs.forEach(p=>{
+          if (p.tth) p.tth.value = '';
+          if (p.th)  p.th.value  = '';
+          if (p.h)   p.h.value   = '';
+          if (p.t)   p.t.value   = '';
+          if (p.o)   p.o.value   = '';
+        });
+      }
+      clearOrderSlots();
+      clearMarks();
+      tilesRevealed = false;
+      refreshTileMasking();
+    }
+
+    function checkABPV(){
+      clearMarks();
+
+      const greatest = Math.max(...nums);
+      const smallest = Math.min(...nums);
+
+      const g = sanitizeDigits(greatestInp.value, 5);
+      const s = sanitizeDigits(smallestInp.value, 5);
+
+      const okG = g !== '' && Number(g) === greatest;
+      const okS = s !== '' && Number(s) === smallest;
+
+      markInput(greatestInp, okG);
+      markInput(smallestInp, okS);
+
+      // PV is required ONLY when:
+      // - not in Compare-by-Place-Value mode, AND
+      // - PV cards are NOT revealed
+      const pvRequired = (!pvCompareMode && !revealPVNumbers);
+
+      let pvOk = true;
+      if (pvRequired){
+        for (let i=0; i<3; i++){
+          const sp = splitTThTHHO(nums[i]);
+
+          const tthVal = pvInputs[i].tth ? sanitizeDigits(pvInputs[i].tth.value, 1) : '';
+          const thVal  = pvInputs[i].th  ? sanitizeDigits(pvInputs[i].th.value,  1) : '';
+          const hVal   = pvInputs[i].h   ? sanitizeDigits(pvInputs[i].h.value,   1) : '';
+          const tVal   = pvInputs[i].t   ? sanitizeDigits(pvInputs[i].t.value,   1) : '';
+          const oVal   = pvInputs[i].o   ? sanitizeDigits(pvInputs[i].o.value,   1) : '';
+
+          const okTTh = tthVal !== '' && Number(tthVal) === sp.tth;
+          const okTh  = thVal  !== '' && Number(thVal)  === sp.th;
+          const okH   = hVal   !== '' && Number(hVal)   === sp.h;
+          const okT   = tVal   !== '' && Number(tVal)   === sp.t;
+          const okO   = oVal   !== '' && Number(oVal)   === sp.o;
+
+          markPVBox(pvTTh[i], okTTh);
+          markPVBox(pvTh[i],  okTh);
+          markPVBox(pvH[i],   okH);
+          markPVBox(pvT[i],   okT);
+          markPVBox(pvO[i],   okO);
+
+          pvOk = pvOk && okTTh && okTh && okH && okT && okO;
+        }
+      }
+
+      const gateOk = okG && okS && (pvRequired ? pvOk : true);
+
+      if (gateOk){
+        if (!tilesRevealed){
+          tilesRevealed = true;
+          refreshTileMasking();
+          msg.textContent = '✅ Good! Now drag the numbers for (c) and press "Check order (c)".';
+        } else {
+          msg.textContent = pvRequired ? '✅ (a), (b) and place value are correct.' : '✅ (a) and (b) are correct.';
+        }
+      } else {
+        if (pvRequired && !pvOk){
+          msg.textContent = 'Try again. Fill in Ten-thousands, Thousands, Hundreds, Tens and Ones correctly.';
+        } else {
+          msg.textContent = 'Try again. Find the greatest and smallest.';
+        }
+      }
+    }
+
+    function checkOrder(){
+      clearOrderMarks();
+
+      if (!tilesRevealed){
+        const pvRequired = (!pvCompareMode && !revealPVNumbers);
+        msg.textContent = pvRequired
+          ? 'Finish (a), (b) and place value first. Then check to reveal the numbers.'
+          : 'Finish (a) and (b) first. Then check to reveal the numbers.';
+        return;
+      }
+
+      const expected = currentExpectedOrder();
+      const placed = readOrderSlots();
+
+      let orderOk = true;
+      for (let i=0; i<3; i++){
+        const filled = placed[i] != null;
+        const ok = filled && placed[i] === expected[i];
+
+        slotEls[i].classList.remove('good','bad');
+        slotEls[i].classList.add(ok ? 'good' : 'bad');
+
+        setSlotDisplay(slotEls[i]);
+        orderOk = orderOk && ok;
+      }
+
+      msg.textContent = orderOk ? '✅ Well done!' : 'Try again. Check the order in (c).';
+    }
+
+    [greatestInp, smallestInp].forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const cleaned = sanitizeDigits(inp.value, 5);
+        if (inp.value !== cleaned) inp.value = cleaned;
+      });
+    });
+
+    // ----- settings / numbers -----
+    function applyNumbers(){
+      nums = makeAllDifferent([set0.value, set1.value, set2.value]);
+      set0.value = nums[0];
+      set1.value = nums[1];
+      set2.value = nums[2];
+      renderAll();
+    }
+
+    function randomizeNumbers(){
+      const pool = new Set();
+      while (pool.size < 3) pool.add(1 + Math.floor(Math.random()*99999));
+      nums = Array.from(pool);
+
+      set0.value = nums[0];
+      set1.value = nums[1];
+      set2.value = nums[2];
+      renderAll();
+    }
+
+    function setRevealHeader(on){
+      revealHeaderNumbers = !!on;
+      revealHeader.checked = revealHeaderNumbers;
+      renderHeader();
+      syncQuickButtons();
+    }
+
+    function setRevealPV(on){
+      revealPVNumbers = !!on;
+      revealPV.checked = revealPVNumbers;
+      renderPV();
+      [greatestInp, smallestInp].forEach(el=> el.value = '');
+      clearMarks();
+
+      tilesRevealed = false;
+      refreshTileMasking();
+      clearOrderSlots();
+      syncQuickButtons();
+    }
+
+    function setOrderDirectionSmallToBig(on){
+      orderIsSmallToBig = !!on;
+      orderSmallToBig.checked = orderIsSmallToBig;
+      updateOrderHint();
+      clearOrderSlots();
+      clearOrderMarks();
+      msg.textContent = '';
+    }
+
+    function syncQuickButtons(){
+      quickHeaderBtn.classList.toggle('toggle-on', revealHeaderNumbers);
+      quickPVBtn.classList.toggle('toggle-on', revealPVNumbers);
+
+      quickHeaderBtn.textContent = revealHeaderNumbers ? 'Header: ON' : 'Header: OFF';
+      quickPVBtn.textContent = revealPVNumbers ? 'PV: ON' : 'PV: OFF';
+
+      pvModeBtn.classList.toggle('toggle-on', pvCompareMode);
+      pvModeBtn.textContent = pvCompareMode ? 'Compare by Place Value: ON' : 'Compare by Place Value';
+
+      const pvRequired = (!pvCompareMode && !revealPVNumbers);
+      checkABBtn.textContent = pvRequired ? 'Check (a)(b)+PV' : 'Check (a)(b)';
+      lockHint.textContent = pvRequired
+        ? 'Check (a), (b) and place value to reveal the numbers.'
+        : 'Check (a) and (b) to reveal the numbers.';
+    }
+
+    function setPVCompareMode(on){
+      pvCompareMode = !!on;
+      document.body.classList.toggle('pvcompare', pvCompareMode);
+      renderPVCompareTable();
+
+      tilesRevealed = false;
+      refreshTileMasking();
+      clearOrderSlots();
+      clearMarks();
+
+      syncQuickButtons();
+      fitStage();
+      applyDiscSizes(true);
+    }
+
+    function renderAll(){
+      renderHeader();
+
+      for (let i=0;i<3;i++) renderBlocksFor(i);
+      applyDiscSizes(true);
+
+      renderPV();
+      renderPVCompareTable();
+
+      updateOrderHint();
+
+      tilesRevealed = false;
+      buildTiles();
+      refreshTileMasking();
+
+      clearMarks();
+      greatestInp.value = '';
+      smallestInp.value = '';
+
+      syncQuickButtons();
+    }
+
+    // ----- drawer open/close -----
+    function openDrawer(){
+      overlay.classList.add('show');
+      drawer.classList.add('show');
+      overlay.setAttribute('aria-hidden','false');
+      document.body.classList.add('drawer-open');
+      fitStage();
+      applyDiscSizes(true);
+    }
+    function closeDrawer(){
+      overlay.classList.remove('show');
+      drawer.classList.remove('show');
+      overlay.setAttribute('aria-hidden','true');
+      document.body.classList.remove('drawer-open');
+      fitStage();
+      applyDiscSizes(true);
+    }
+
+    openSettings.addEventListener('click', openDrawer);
+    openSettings2.addEventListener('click', openDrawer);
+    closeSettings.addEventListener('click', closeDrawer);
+    overlay.addEventListener('click', closeDrawer);
+    window.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeDrawer(); });
+
+    // ----- events -----
+    revealHeader.addEventListener('change', ()=> setRevealHeader(revealHeader.checked));
+    revealPV.addEventListener('change', ()=> setRevealPV(revealPV.checked));
+    orderSmallToBig.addEventListener('change', ()=> setOrderDirectionSmallToBig(orderSmallToBig.checked));
+
+    applyBtn.addEventListener('click', applyNumbers);
+    randomBtn.addEventListener('click', randomizeNumbers);
+    teacherClear.addEventListener('click', clearInputsOnly);
+
+    checkABBtn.addEventListener('click', checkABPV);
+    checkOrderBtn.addEventListener('click', checkOrder);
+
+    clearBtn.addEventListener('click', clearInputsOnly);
+
+    orderClearBtn.addEventListener('click', ()=>{
+      clearOrderSlots();
+      clearOrderMarks();
+      msg.textContent = '';
+    });
+
+    quickRandomBtn.addEventListener('click', randomizeNumbers);
+    quickHeaderBtn.addEventListener('click', ()=> setRevealHeader(!revealHeaderNumbers));
+    quickPVBtn.addEventListener('click', ()=> setRevealPV(!revealPVNumbers));
+
+    pvModeBtn.addEventListener('click', ()=> setPVCompareMode(!pvCompareMode));
+
+    discBigRange.addEventListener('input', ()=>{ applyDiscSizes(false); });
+    discMedRange.addEventListener('input', ()=>{ applyDiscSizes(false); });
+    discSmallRange.addEventListener('input', ()=>{ applyDiscSizes(false); });
+
+    // init
+    set0.value = nums[0];
+    set1.value = nums[1];
+    set2.value = nums[2];
+
+    initSlotsDnD();
+    fitStage();
+
+    requestAnimationFrame(()=>{
+      applyDiscSizes(false);
+      setOrderDirectionSmallToBig(true);
+      renderAll();
+      setPVCompareMode(false); // start with discs
+    });
+  </script>
+<script src="https://cdn.counter.dev/script.js" data-id="825e93b6-ce99-40ef-8bcc-125f13297433" data-utcoffset="8"></script>
+</body>
+</html>

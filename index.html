@@ -58,7 +58,7 @@
 
     .viewport{
       position:fixed; inset:0;
-      display:flex; align-items:center; justify-content:center;
+      overflow:hidden;
       padding: 10px;
     }
     .stage{
@@ -67,7 +67,10 @@
       transform-origin: top left;
       background:#fff;
       border-radius: 18px;
-      position:relative;
+      position:absolute;
+      left:0;
+      top:0;
+      will-change:transform;
     }
 
     .wrap{
@@ -647,6 +650,8 @@
       background:#fff;
       white-space:nowrap;
     }
+  
+    @media(max-width:799px){body.drawer-open .viewport{padding-right:10px}}
   </style>
 </script>
 </head>
@@ -944,17 +949,20 @@
     const drawer = document.getElementById('drawer');
 
     function fitStage(){
-      const pad = 20;
-      const vw = Math.max(320, window.innerWidth - pad);
-      const vh = Math.max(320, window.innerHeight - pad);
-
+      const margin = 10;
       const drawerOpen = document.body.classList.contains('drawer-open');
-      const dw = drawerOpen ? drawer.getBoundingClientRect().width : 0;
-      const availW = Math.max(320, vw - dw);
-
-      const s = Math.min(availW / BASE_W, vh / BASE_H);
+      const reserveDrawer = drawerOpen && window.innerWidth >= 800;
+      const drawerWidth = reserveDrawer ? drawer.getBoundingClientRect().width : 0;
+      const availW = Math.max(260, window.innerWidth - drawerWidth - margin * 2);
+      const availH = Math.max(260, window.innerHeight - margin * 2);
+      const s = Math.min(availW / BASE_W, availH / BASE_H, 1);
+      const left = margin + Math.max(0, (availW - BASE_W * s) / 2);
+      const top = margin + Math.max(0, (availH - BASE_H * s) / 2);
+      stage.style.left = `${left}px`;
+      stage.style.top = `${top}px`;
       stage.style.transform = `scale(${s})`;
     }
+    window.addEventListener('load', fitStage);
 
     window.addEventListener('resize', ()=>{
       fitStage();

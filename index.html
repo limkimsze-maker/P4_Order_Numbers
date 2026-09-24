@@ -957,7 +957,7 @@
       const availH = Math.max(260, window.innerHeight - margin * 2);
       const s = Math.min(availW / BASE_W, availH / BASE_H, 1);
       const left = margin + Math.max(0, (availW - BASE_W * s) / 2);
-      const top = margin + Math.max(0, (availH - BASE_H * s) / 2);
+      const top = window.innerWidth < 760 ? margin : margin + Math.max(0, (availH - BASE_H * s) / 2);
       stage.style.left = `${left}px`;
       stage.style.top = `${top}px`;
       stage.style.transform = `scale(${s})`;
